@@ -1,0 +1,73 @@
+version: "3.8"
+
+services:
+  rabbitmq:
+    image: rabbitmq:3.12-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    networks:
+      - event-driven-network
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+
+  event-producer:
+    build:
+      context: .
+      dockerfile: Dockerfile.producer
+    container_name: event-producer
+    depends_on:
+      - rabbitmq
+    networks:
+      - event-driven-network
+    volumes:
+      - producer-data:/app/data
+
+  event-consumer:
+    build:
+      context: .
+      dockerfile: Dockerfile.consumer
+    container_name: event-consumer
+    ports:
+      - "8080:8080"
+    depends_on:
+      - rabbitmq
+    environment:
+      - ASPNETCORE_URLS=http://+:8080
+    networks:
+      - event-driven-network
+    volumes:
+      - consumer-data:/app/data
+
+  dashboard:
+    build:
+      context: ./Dashboard
+      dockerfile: Dockerfile
+    container_name: dashboard
+    ports:
+      - "80:80"
+    depends_on:
+      - event-consumer
+    environment:
+      - REACT_APP_API_URL=http://event-consumer:8080
+    networks:
+      - event-driven-network
+
+networks:
+  event-driven-network:
+    driver: bridge
+
+volumes:
+  producer-data:
+  consumer-data:
+  rabbitmq-data:

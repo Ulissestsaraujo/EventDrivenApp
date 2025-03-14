@@ -1,0 +1,29 @@
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+WORKDIR /src
+
+# Copy csproj files and restore dependencies
+COPY ["Api/Api.csproj", "Api/"]
+COPY ["Shared/Shared.csproj", "Shared/"]
+RUN dotnet restore "Api/Api.csproj"
+
+# Copy and build the application
+COPY . .
+WORKDIR "/src/Api"
+RUN dotnet build "Api.csproj" -c Release -o /app/build
+
+FROM build AS publish
+RUN dotnet publish "Api.csproj" -c Release -o /app/publish
+
+FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
+WORKDIR /app
+COPY --from=publish /app/publish .
+
+# Create data directory for SQLite
+RUN mkdir -p /app/data
+VOLUME /app/data
+
+# Set connection string to point to data volume
+ENV ConnectionStrings__DefaultConnection="Data Source=/app/data/consumer.db"
+ENV ASPNETCORE_URLS="http://+:8080"
+
+ENTRYPOINT ["dotnet", "Api.dll"] 

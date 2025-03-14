@@ -1,0 +1,80 @@
+# .NET Core / .NET specific
+bin/
+obj/
+*.dll
+*.pdb
+*.user
+*.userosscache
+*.suo
+*.userprefs
+*.pidb
+*.dbmdl
+*.log
+.vs/
+*.sln.iml
+riderModule.iml
+/_ReSharper*
+**/packages/*
+!**/packages/build/
+*.nupkg
+*.pfx
+*.snk
+*.[Cc]ache
+!*.*.cache
+*.docstates
+*.binlog
+
+# SQLite database files
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+*.sqlite-shm
+*.sqlite-wal
+
+# Node.js/React
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.DS_Store
+coverage/
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+build/
+dist/
+
+# IDE folders
+.vscode/
+.idea/
+# Uncomment specific settings files if you want to share them
+# !.vscode/extensions.json
+# !.vscode/settings.json
+# !.vscode/tasks.json
+# !.vscode/launch.json
+
+# MassTransit
+.massTransit/
+
+# RabbitMQ
+.rabbitmq/
+
+# Docker
+docker-compose.override.yml
+
+# Logs
+logs/
+*.log
+
+# Test Results
+TestResults/
+[Tt]est[Rr]esult*/
+
+# OS specific
+.DS_Store
+Thumbs.db
+desktop.ini 
