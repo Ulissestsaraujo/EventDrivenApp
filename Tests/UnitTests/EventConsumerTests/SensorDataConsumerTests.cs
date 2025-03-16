@@ -24,6 +24,12 @@ namespace UnitTests.EventConsumerTests
         private readonly SensorDataConsumer _consumer;
         private readonly Mock<ConsumeContext<SensorDataMessage>> _consumeContextMock;
 
+        // Helper method to safely check if a string contains a substring
+        private static bool SafeContains(object obj, string value)
+        {
+            return obj != null && obj.ToString().Contains(value);
+        }
+
         public SensorDataConsumerTests()
         {
             _loggerMock = new Mock<ILogger<SensorDataConsumer>>();
@@ -84,11 +90,9 @@ namespace UnitTests.EventConsumerTests
                     x.Log(
                         It.IsAny<LogLevel>(),
                         It.IsAny<EventId>(),
-                        It.Is<It.IsAnyType>(
-                            (v, t) => v.ToString().Contains("Successfully processed")
-                        ),
+                        It.Is<It.IsAnyType>((v, t) => SafeContains(v, "Successfully processed")),
                         It.IsAny<Exception>(),
-                        It.IsAny<Func<It.IsAnyType, Exception, string>>()
+                        It.IsAny<Func<It.IsAnyType, Exception?, string>>()
                     ),
                 Times.Once
             );
@@ -131,10 +135,10 @@ namespace UnitTests.EventConsumerTests
         public async Task Consume_WithInvalidMessage_ShouldThrowException()
         {
             // Create a null message to simulate an error condition
-            SensorDataMessage message = null;
+            SensorDataMessage? message = null;
 
             var contextMock = new Mock<ConsumeContext<SensorDataMessage>>();
-            contextMock.Setup(m => m.Message).Returns(message);
+            contextMock.Setup(m => m.Message).Returns(message!);
 
             await Assert.ThrowsAsync<NullReferenceException>(
                 () => _consumer.Consume(contextMock.Object)
@@ -143,13 +147,13 @@ namespace UnitTests.EventConsumerTests
             _loggerMock.Verify(
                 x =>
                     x.Log(
-                        LogLevel.Error,
+                        It.IsAny<LogLevel>(),
                         It.IsAny<EventId>(),
-                        It.Is<It.IsAnyType>((v, t) => true),
+                        It.Is<It.IsAnyType>((v, t) => SafeContains(v, "error")),
                         It.IsAny<Exception>(),
-                        It.IsAny<Func<It.IsAnyType, Exception, string>>()
+                        It.IsAny<Func<It.IsAnyType, Exception?, string>>()
                     ),
-                Times.Exactly(2)
+                Times.Once
             );
 
             var savedData = await _dbContext.SensorData.ToListAsync();
@@ -224,13 +228,13 @@ namespace UnitTests.EventConsumerTests
             _loggerMock.Verify(
                 x =>
                     x.Log(
-                        LogLevel.Error,
+                        It.IsAny<LogLevel>(),
                         It.IsAny<EventId>(),
-                        It.Is<It.IsAnyType>((v, t) => true),
+                        It.Is<It.IsAnyType>((v, t) => SafeContains(v, "Error")),
                         It.IsAny<Exception>(),
-                        It.IsAny<Func<It.IsAnyType, Exception, string>>()
+                        It.IsAny<Func<It.IsAnyType, Exception?, string>>()
                     ),
-                Times.AtLeastOnce
+                Times.Once
             );
         }
 
@@ -275,13 +279,13 @@ namespace UnitTests.EventConsumerTests
             _loggerMock.Verify(
                 x =>
                     x.Log(
-                        LogLevel.Error,
+                        It.IsAny<LogLevel>(),
                         It.IsAny<EventId>(),
-                        It.Is<It.IsAnyType>((v, t) => true),
+                        It.Is<It.IsAnyType>((v, t) => SafeContains(v, "database error")),
                         It.IsAny<Exception>(),
-                        It.IsAny<Func<It.IsAnyType, Exception, string>>()
+                        It.IsAny<Func<It.IsAnyType, Exception?, string>>()
                     ),
-                Times.AtLeastOnce
+                Times.Once
             );
         }
 
@@ -303,13 +307,13 @@ namespace UnitTests.EventConsumerTests
             _loggerMock.Verify(
                 x =>
                     x.Log(
-                        LogLevel.Error,
+                        It.IsAny<LogLevel>(),
                         It.IsAny<EventId>(),
-                        It.Is<It.IsAnyType>((v, t) => true),
+                        It.Is<It.IsAnyType>((v, t) => SafeContains(v, "Missing required field")),
                         It.IsAny<Exception>(),
-                        It.IsAny<Func<It.IsAnyType, Exception, string>>()
+                        It.IsAny<Func<It.IsAnyType, Exception?, string>>()
                     ),
-                Times.AtLeastOnce
+                Times.Once
             );
         }
     }

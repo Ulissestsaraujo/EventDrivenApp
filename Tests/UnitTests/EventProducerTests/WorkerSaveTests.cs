@@ -168,7 +168,7 @@ namespace UnitTests.EventProducerTests
                         "MapToMessage",
                         System.Reflection.BindingFlags.NonPublic
                             | System.Reflection.BindingFlags.Instance
-                    )
+                    )!
                     .Invoke(_worker, new object[] { sensorData }) as SensorDataMessage;
 
             Assert.NotNull(message);

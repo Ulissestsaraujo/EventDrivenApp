@@ -48,7 +48,8 @@ const SensorDataChart: React.FC<SensorDataChartProps> = ({
             dataKey={line.dataKey}
             name={line.name}
             stroke={line.color}
-            activeDot={{ r: 8 }}
+            dot={false}
+            activeDot={false}
           />
         ))}
       </LineChart>

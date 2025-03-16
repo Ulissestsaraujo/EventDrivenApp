@@ -216,7 +216,7 @@ namespace UnitTests.EventProducerTests
                         It.IsAny<EventId>(),
                         It.Is<It.IsAnyType>((v, t) => true),
                         It.IsAny<Exception>(),
-                        It.IsAny<Func<It.IsAnyType, Exception, string>>()
+                        It.IsAny<Func<It.IsAnyType, Exception?, string>>()
                     ),
                 Times.AtLeastOnce
             );
@@ -247,7 +247,7 @@ namespace UnitTests.EventProducerTests
                         It.IsAny<EventId>(),
                         It.Is<It.IsAnyType>((v, t) => true),
                         It.IsAny<Exception>(),
-                        It.IsAny<Func<It.IsAnyType, Exception, string>>()
+                        It.IsAny<Func<It.IsAnyType, Exception?, string>>()
                     ),
                 Times.AtLeastOnce
             );

@@ -56,6 +56,16 @@ public class Worker : BackgroundService
                 {
                     var sensorData = GenerateSensorData();
 
+                    // Occasionally generate bad data (about 10% of the time)
+                    if (_random.Next(1, 11) == 1)
+                    {
+                        CorruptSensorData(sensorData);
+                        _logger.LogWarning(
+                            "Generated corrupted data for sensor {SensorId}",
+                            sensorData.SensorId
+                        );
+                    }
+
                     await SaveSensorDataAsync(sensorData);
 
                     await _bus.Publish(MapToMessage(sensorData), stoppingToken);
@@ -142,6 +152,52 @@ public class Worker : BackgroundService
         }
 
         return sensorData;
+    }
+
+    internal void CorruptSensorData(SensorData data)
+    {
+        // Choose how to corrupt the data based on sensor type
+        switch (data.SensorType)
+        {
+            case SensorType.Environmental:
+                // Corrupt temperature with extreme values
+                if (_random.Next(0, 2) == 0)
+                    data.Temperature = _random.Next(101, 200); // Too hot
+                else
+                    data.Temperature = _random.Next(-200, -101); // Too cold
+                break;
+
+            case SensorType.AirQuality:
+                // Negative CO2 value (impossible)
+                data.CO2 = _random.Next(-1000, -1);
+                break;
+
+            case SensorType.Water:
+                // pH out of range (0-14 is valid)
+                data.PH = _random.Next(15, 30);
+                break;
+
+            case SensorType.Energy:
+                // Negative voltage or current (shouldn't happen for this type of sensor)
+                if (_random.Next(0, 2) == 0)
+                    data.Voltage = -1 * _random.Next(1, 500);
+                else
+                    data.PowerConsumption = -1 * _random.Next(1, 10000);
+                break;
+
+            case SensorType.Motion:
+                // Extreme acceleration values
+                var extremeAccel = _random.Next(100, 1000);
+                data.AccelerationX = extremeAccel;
+                data.AccelerationY = extremeAccel;
+                data.AccelerationZ = extremeAccel;
+                break;
+
+            case SensorType.Light:
+                // Impossible UV index (scale only goes to 11)
+                data.UVIndex = _random.Next(20, 100);
+                break;
+        }
     }
 
     internal SensorDataMessage MapToMessage(SensorData sensorData)

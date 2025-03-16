@@ -11,14 +11,17 @@ import {
   fetchLatestSensorData,
   fetchSensorSummary,
   fetchSensorDataByType,
+  fetchSensorErrors,
   SensorData,
   SensorSummary,
   SensorType,
+  SensorError,
 } from "../services/apiService";
 
 import SensorSummarySection from "./SensorSummarySection";
 import SensorTable from "./SensorTable";
 import SensorChartsSection from "./SensorChartsSection";
+import SensorErrorsPanel from "./SensorErrorsPanel";
 
 const Dashboard = () => {
   const [latestData, setLatestData] = useState<SensorData[]>([]);
@@ -39,18 +42,20 @@ const Dashboard = () => {
     SensorType.Environmental
   );
   const [typeData, setTypeData] = useState<SensorData[]>([]);
+  const [sensorErrors, setSensorErrors] = useState<SensorError[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [latest, summaryResponse] = await Promise.all([
+        const [latest, summaryResponse, errors] = await Promise.all([
           fetchLatestSensorData(),
           fetchSensorSummary(
             summaryPagination.currentPage,
             summaryPagination.pageSize,
             summaryFilterType
           ),
+          fetchSensorErrors(),
         ]);
 
         setLatestData(latest);
@@ -61,6 +66,7 @@ const Dashboard = () => {
           currentPage: summaryResponse.currentPage,
           pageSize: summaryResponse.pageSize,
         });
+        setSensorErrors(errors);
         setError(null);
       } catch (err) {
         setError("Error fetching data from the API");
@@ -79,21 +85,18 @@ const Dashboard = () => {
     summaryFilterType,
   ]);
 
-  useEffect(() => {
-    const fetchTypeData = async () => {
-      try {
-        setLoading(true);
-        const data = await fetchSensorDataByType(selectedType);
-        setTypeData(data);
-        setError(null);
-      } catch (err) {
-        setError(`Error fetching data for type ${selectedType}`);
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchTypeData = async () => {
+    try {
+      const data = await fetchSensorDataByType(selectedType);
+      setTypeData(data);
+      setError(null);
+    } catch (err) {
+      setError(`Error fetching data for type ${selectedType}`);
+      console.error(err);
+    }
+  };
 
+  useEffect(() => {
     fetchTypeData();
   }, [selectedType]);
 
@@ -123,6 +126,10 @@ const Dashboard = () => {
       ...prev,
       currentPage: 1,
     }));
+  };
+
+  const handleRefreshChartData = () => {
+    fetchTypeData();
   };
 
   if (loading && !latestData.length) {
@@ -160,6 +167,14 @@ const Dashboard = () => {
       )}
 
       <Grid container spacing={3}>
+        {/* Sensor Error Panel */}
+        <Grid size={{ xs: 12 }}>
+          <SensorErrorsPanel
+            errorData={sensorErrors.slice(0, 3)}
+            formatTimestamp={formatTimestamp}
+          />
+        </Grid>
+
         {/* Sensor Summary Section */}
         <Grid size={{ xs: 12 }}>
           <SensorSummarySection
@@ -184,12 +199,15 @@ const Dashboard = () => {
 
         {/* Sensor Charts Section */}
         <Grid size={{ xs: 12 }}>
-          <SensorChartsSection
-            tabValue={tabValue}
-            typeData={typeData}
-            formatTimestamp={formatTimestamp}
-            onTabChange={handleTabChange}
-          />
+          <Paper sx={{ p: 2 }}>
+            <SensorChartsSection
+              tabValue={tabValue}
+              typeData={typeData}
+              formatTimestamp={formatTimestamp}
+              onTabChange={handleTabChange}
+              onRefresh={handleRefreshChartData}
+            />
+          </Paper>
         </Grid>
       </Grid>
     </Box>

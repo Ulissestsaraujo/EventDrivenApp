@@ -11,6 +11,14 @@ export enum SensorType {
   Light = "Light",
 }
 
+export interface SensorError {
+  sensorId: string;
+  sensorType: SensorType;
+  errorCount: number;
+  lastErrorTimestamp: string;
+  lastErrorMessage: string;
+}
+
 export interface SensorData {
   id: number;
   sensorId: string;
@@ -132,7 +140,6 @@ export const fetchSensorDataByType = async (
     const response = await axios.get<SensorData[]>(
       `${API_URL}/api/SensorData/byType/${sensorType}`
     );
-    console.log(response.data);
     return response.data;
   } catch (error) {
     console.error(`Error fetching sensor data for type ${sensorType}:`, error);
@@ -175,3 +182,16 @@ export const fetchSensorSummary = async (
     };
   }
 };
+
+export async function fetchSensorErrors(): Promise<SensorError[]> {
+  try {
+    const response = await fetch(`${API_URL}/api/sensorErrors`);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error("Error fetching sensor errors:", error);
+    throw error;
+  }
+}

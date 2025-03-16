@@ -147,11 +147,12 @@ public class SensorDataController : ControllerBase
                 .ToListAsync();
 
             var summary = latestDataBySensor
+                .Where(x => x.LatestEntry != null)
                 .Select(x => new
                 {
                     SensorId = x.SensorId,
                     SensorType = x.SensorType,
-                    LatestTimestamp = x.LatestEntry.Timestamp,
+                    LatestTimestamp = x.LatestEntry!.Timestamp,
 
                     // Environmental data
                     LatestTemperature = x.LatestEntry.Temperature,
