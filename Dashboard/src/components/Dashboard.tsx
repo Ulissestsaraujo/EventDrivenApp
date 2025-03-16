@@ -149,10 +149,6 @@ const Dashboard = () => {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom>
-        Sensor Data Dashboard
-      </Typography>
-
       {error && (
         <Paper
           sx={{

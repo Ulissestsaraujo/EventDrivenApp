@@ -23,8 +23,7 @@ public class SensorErrorsController : ControllerBase
         try
         {
             var errors = await _dbContext
-                .SensorErrors
-                .OrderByDescending(e => e.ErrorCount)
+                .SensorErrors.OrderByDescending(e => e.ErrorCount)
                 .ThenByDescending(e => e.ErrorTimestamp)
                 .Take(3)
                 .ToListAsync();
