@@ -6,7 +6,6 @@ using Shared.Data;
 var builder = Host.CreateApplicationBuilder(args);
 builder.Services.AddHostedService<Worker>();
 
-// Configure MassTransit with RabbitMQ
 builder.Services.AddMassTransit(x =>
 {
     x.UsingRabbitMq(
@@ -32,7 +31,6 @@ builder.Services.AddMassTransit(x =>
     );
 });
 
-// Configure SQLite database
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(
         builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=producer.db"
@@ -41,3 +39,5 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 var host = builder.Build();
 host.Run();
+
+public partial class Program { }

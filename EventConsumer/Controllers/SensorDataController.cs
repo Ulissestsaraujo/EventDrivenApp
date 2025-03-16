@@ -121,96 +121,87 @@ public class SensorDataController : ControllerBase
     }
 
     [HttpGet("summary")]
-    public async Task<IActionResult> GetSensorDataSummary()
+    public async Task<IActionResult> GetSensorDataSummary(
+        [FromQuery] SensorType? sensorType = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 6
+    )
     {
         try
         {
-            var summary = await _dbContext
-                .SensorData.GroupBy(x => new { x.SensorId, x.SensorType })
+            IQueryable<SensorData> query = _dbContext.SensorData;
+
+            if (sensorType.HasValue)
+            {
+                query = query.Where(x => x.SensorType == sensorType.Value);
+            }
+
+            var latestDataBySensor = await query
+                .GroupBy(x => new { x.SensorId, x.SensorType })
                 .Select(g => new
                 {
                     SensorId = g.Key.SensorId,
                     SensorType = g.Key.SensorType,
-                    LatestTimestamp = g.Max(x => x.Timestamp),
-
-                    // Environmental data
-                    LatestTemperature = g.OrderByDescending(x => x.Timestamp)
-                        .Select(x => x.Temperature)
-                        .FirstOrDefault(),
-                    LatestHumidity = g.OrderByDescending(x => x.Timestamp)
-                        .Select(x => x.Humidity)
-                        .FirstOrDefault(),
-                    LatestPressure = g.OrderByDescending(x => x.Timestamp)
-                        .Select(x => x.Pressure)
-                        .FirstOrDefault(),
-
-                    // Air quality data
-                    LatestCO2 = g.OrderByDescending(x => x.Timestamp)
-                        .Select(x => x.CO2)
-                        .FirstOrDefault(),
-                    LatestVOC = g.OrderByDescending(x => x.Timestamp)
-                        .Select(x => x.VOC)
-                        .FirstOrDefault(),
-                    LatestPM25 = g.OrderByDescending(x => x.Timestamp)
-                        .Select(x => x.PM25)
-                        .FirstOrDefault(),
-                    LatestPM10 = g.OrderByDescending(x => x.Timestamp)
-                        .Select(x => x.PM10)
-                        .FirstOrDefault(),
-
-                    // Water data
-                    LatestPH = g.OrderByDescending(x => x.Timestamp)
-                        .Select(x => x.PH)
-                        .FirstOrDefault(),
-                    LatestTurbidity = g.OrderByDescending(x => x.Timestamp)
-                        .Select(x => x.Turbidity)
-                        .FirstOrDefault(),
-                    LatestDissolvedOxygen = g.OrderByDescending(x => x.Timestamp)
-                        .Select(x => x.DissolvedOxygen)
-                        .FirstOrDefault(),
-                    LatestConductivity = g.OrderByDescending(x => x.Timestamp)
-                        .Select(x => x.Conductivity)
-                        .FirstOrDefault(),
-
-                    // Energy data
-                    LatestVoltage = g.OrderByDescending(x => x.Timestamp)
-                        .Select(x => x.Voltage)
-                        .FirstOrDefault(),
-                    LatestCurrent = g.OrderByDescending(x => x.Timestamp)
-                        .Select(x => x.Current)
-                        .FirstOrDefault(),
-                    LatestPowerConsumption = g.OrderByDescending(x => x.Timestamp)
-                        .Select(x => x.PowerConsumption)
-                        .FirstOrDefault(),
-
-                    // Motion data
-                    LatestAccelerationX = g.OrderByDescending(x => x.Timestamp)
-                        .Select(x => x.AccelerationX)
-                        .FirstOrDefault(),
-                    LatestAccelerationY = g.OrderByDescending(x => x.Timestamp)
-                        .Select(x => x.AccelerationY)
-                        .FirstOrDefault(),
-                    LatestAccelerationZ = g.OrderByDescending(x => x.Timestamp)
-                        .Select(x => x.AccelerationZ)
-                        .FirstOrDefault(),
-                    LatestVibration = g.OrderByDescending(x => x.Timestamp)
-                        .Select(x => x.Vibration)
-                        .FirstOrDefault(),
-
-                    // Light data
-                    LatestIlluminance = g.OrderByDescending(x => x.Timestamp)
-                        .Select(x => x.Illuminance)
-                        .FirstOrDefault(),
-                    LatestUVIndex = g.OrderByDescending(x => x.Timestamp)
-                        .Select(x => x.UVIndex)
-                        .FirstOrDefault(),
-                    LatestColorTemperature = g.OrderByDescending(x => x.Timestamp)
-                        .Select(x => x.ColorTemperature)
-                        .FirstOrDefault(),
+                    LatestEntry = g.OrderByDescending(x => x.Timestamp).FirstOrDefault(),
                 })
                 .ToListAsync();
 
-            return Ok(summary);
+            var summary = latestDataBySensor
+                .Select(x => new
+                {
+                    SensorId = x.SensorId,
+                    SensorType = x.SensorType,
+                    LatestTimestamp = x.LatestEntry.Timestamp,
+
+                    // Environmental data
+                    LatestTemperature = x.LatestEntry.Temperature,
+                    LatestHumidity = x.LatestEntry.Humidity,
+                    LatestPressure = x.LatestEntry.Pressure,
+
+                    // Air quality data
+                    LatestCO2 = x.LatestEntry.CO2,
+                    LatestVOC = x.LatestEntry.VOC,
+                    LatestPM25 = x.LatestEntry.PM25,
+                    LatestPM10 = x.LatestEntry.PM10,
+
+                    // Water data
+                    LatestPH = x.LatestEntry.PH,
+                    LatestTurbidity = x.LatestEntry.Turbidity,
+                    LatestDissolvedOxygen = x.LatestEntry.DissolvedOxygen,
+                    LatestConductivity = x.LatestEntry.Conductivity,
+
+                    // Energy data
+                    LatestVoltage = x.LatestEntry.Voltage,
+                    LatestCurrent = x.LatestEntry.Current,
+                    LatestPowerConsumption = x.LatestEntry.PowerConsumption,
+
+                    // Motion data
+                    LatestAccelerationX = x.LatestEntry.AccelerationX,
+                    LatestAccelerationY = x.LatestEntry.AccelerationY,
+                    LatestAccelerationZ = x.LatestEntry.AccelerationZ,
+                    LatestVibration = x.LatestEntry.Vibration,
+
+                    // Light data
+                    LatestIlluminance = x.LatestEntry.Illuminance,
+                    LatestUVIndex = x.LatestEntry.UVIndex,
+                    LatestColorTemperature = x.LatestEntry.ColorTemperature,
+                })
+                .ToList();
+
+            var totalCount = summary.Count;
+            var pageCount = (int)Math.Ceiling(totalCount / (double)pageSize);
+            var paginatedData = summary.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+
+            return Ok(
+                new
+                {
+                    TotalCount = totalCount,
+                    TotalPages = pageCount,
+                    CurrentPage = page,
+                    PageSize = pageSize,
+                    Data = paginatedData,
+                }
+            );
         }
         catch (Exception ex)
         {

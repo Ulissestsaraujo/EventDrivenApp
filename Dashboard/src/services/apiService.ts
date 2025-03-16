@@ -24,10 +24,10 @@ export interface SensorData {
   pressure?: number;
 
   // Air quality sensor data
-  co2?: number;
+  cO2?: number;
   voc?: number;
-  pm25?: number;
-  pm10?: number;
+  pM25?: number;
+  pM10?: number;
 
   // Water sensor data
   ph?: number;
@@ -91,6 +91,14 @@ export interface SensorSummary {
   latestColorTemperature?: number;
 }
 
+export interface PaginatedResponse<T> {
+  totalCount: number;
+  totalPages: number;
+  currentPage: number;
+  pageSize: number;
+  data: T[];
+}
+
 export const fetchLatestSensorData = async (): Promise<SensorData[]> => {
   try {
     const response = await axios.get<SensorData[]>(
@@ -124,6 +132,7 @@ export const fetchSensorDataByType = async (
     const response = await axios.get<SensorData[]>(
       `${API_URL}/api/SensorData/byType/${sensorType}`
     );
+    console.log(response.data);
     return response.data;
   } catch (error) {
     console.error(`Error fetching sensor data for type ${sensorType}:`, error);
@@ -141,14 +150,28 @@ export const fetchAllSensorData = async (): Promise<SensorData[]> => {
   }
 };
 
-export const fetchSensorSummary = async (): Promise<SensorSummary[]> => {
+export const fetchSensorSummary = async (
+  page: number = 1,
+  pageSize: number = 6,
+  sensorType?: SensorType
+): Promise<PaginatedResponse<SensorSummary>> => {
   try {
-    const response = await axios.get<SensorSummary[]>(
-      `${API_URL}/api/SensorData/summary`
-    );
+    let url = `${API_URL}/api/SensorData/summary?page=${page}&pageSize=${pageSize}`;
+
+    if (sensorType) {
+      url += `&sensorType=${sensorType}`;
+    }
+
+    const response = await axios.get<PaginatedResponse<SensorSummary>>(url);
     return response.data;
   } catch (error) {
     console.error("Error fetching sensor summary:", error);
-    return [];
+    return {
+      totalCount: 0,
+      totalPages: 0,
+      currentPage: page,
+      pageSize: pageSize,
+      data: [],
+    };
   }
 };

@@ -26,18 +26,16 @@ public class SensorDataConsumer : IConsumer<SensorDataMessage>
 
         try
         {
-            // Validate the message
             if (message == null)
             {
                 _logger.LogError("Message cannot be null");
                 throw new NullReferenceException("Message cannot be null");
             }
 
-            // Basic validation of required fields
             if (string.IsNullOrEmpty(message.SensorId))
             {
                 _logger.LogError("Missing required field: SensorId");
-                return; // Don't save to database if required fields are missing
+                return;
             }
 
             _logger.LogInformation(
@@ -46,23 +44,20 @@ public class SensorDataConsumer : IConsumer<SensorDataMessage>
                 message.SensorId
             );
 
-            // Validate sensor data values based on type
             if (!IsValidSensorData(message))
             {
                 _logger.LogError(
                     "Invalid sensor data values for sensor {SensorId}",
                     message.SensorId
                 );
-                return; // Don't save to database if data is invalid
+                return; 
             }
 
             using var scope = _scopeFactory.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-            // Ensure database is created
             await dbContext.Database.EnsureCreatedAsync();
 
-            // Process and store the sensor data
             var sensorData = new SensorData
             {
                 SensorId = message.SensorId,
@@ -161,7 +156,6 @@ public class SensorDataConsumer : IConsumer<SensorDataMessage>
                     return false;
                 break;
 
-            // Additional validations for other sensor types could be added here
         }
 
         return true;

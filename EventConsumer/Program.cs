@@ -6,7 +6,6 @@ using Shared.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container
 builder
     .Services.AddControllers()
     .AddJsonOptions(options =>
@@ -18,7 +17,6 @@ builder
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddOpenApi();
 
-// Configure MassTransit with RabbitMQ
 builder.Services.AddMassTransit(x =>
 {
     x.AddConsumer<SensorDataConsumer>();
@@ -41,7 +39,6 @@ builder.Services.AddMassTransit(x =>
                 }
             );
 
-            // Configure the consumer endpoint
             cfg.ReceiveEndpoint(
                 "sensor-data-queue",
                 e =>
@@ -58,14 +55,12 @@ builder.Services.AddMassTransit(x =>
     );
 });
 
-// Configure SQLite database
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(
         builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=consumer.db"
     )
 );
 
-// Configure CORS to allow requests from the React frontend
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(
@@ -87,17 +82,10 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Ensure database is created
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     dbContext.Database.EnsureCreated();
-}
-
-// Configure the HTTP request pipeline
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
 }
 
 app.UseHttpsRedirection();

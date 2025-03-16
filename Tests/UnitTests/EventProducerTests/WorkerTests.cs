@@ -29,13 +29,11 @@ namespace UnitTests.EventProducerTests
             _busMock = new Mock<IBus>();
             _scopeFactoryMock = new Mock<IServiceScopeFactory>();
 
-            // Set up in-memory database
             var options = new DbContextOptionsBuilder<AppDbContext>()
                 .UseInMemoryDatabase(databaseName: $"TestDb_{Guid.NewGuid()}")
                 .Options;
             _dbContext = new AppDbContext(options);
 
-            // Configure scope factory to return DbContext
             var mockScope = new Mock<IServiceScope>();
             var mockProvider = new Mock<IServiceProvider>();
             mockProvider.Setup(x => x.GetService(typeof(AppDbContext))).Returns(_dbContext);
@@ -48,25 +46,15 @@ namespace UnitTests.EventProducerTests
         [Fact]
         public void GenerateSensorData_ShouldReturnValidData()
         {
-            // Arrange
-            var loggerMock = new Mock<ILogger<Worker>>();
-            var busMock = new Mock<IBus>();
-            var scopeFactoryMock = new Mock<IServiceScopeFactory>();
-            var worker = new Worker(loggerMock.Object, busMock.Object, scopeFactoryMock.Object);
+            var result = _worker.GenerateSensorData();
 
-            // Act
-            var result = worker.GenerateSensorData();
-
-            // Assert
             Assert.NotNull(result);
             Assert.NotNull(result.SensorId);
             Assert.False(result.Processed);
-            Assert.True((DateTime.UtcNow - result.Timestamp).TotalSeconds < 1); // Generated timestamp should be recent
+            Assert.True((DateTime.UtcNow - result.Timestamp).TotalSeconds < 1);
 
-            // Verify that the SensorType is valid
             Assert.True(Enum.IsDefined(typeof(SensorType), result.SensorType));
 
-            // Check for specific fields based on sensor type
             switch (result.SensorType)
             {
                 case SensorType.Environmental:
@@ -121,13 +109,6 @@ namespace UnitTests.EventProducerTests
         [Fact]
         public void GenerateSensorData_ShouldUsePredefinedSensorIds()
         {
-            // Arrange
-            var loggerMock = new Mock<ILogger<Worker>>();
-            var busMock = new Mock<IBus>();
-            var scopeFactoryMock = new Mock<IServiceScopeFactory>();
-            var worker = new Worker(loggerMock.Object, busMock.Object, scopeFactoryMock.Object);
-
-            // All expected sensor types and their IDs
             var expectedSensorIds = new Dictionary<SensorType, string[]>
             {
                 { SensorType.Environmental, new[] { "env-001", "env-002", "env-003" } },
@@ -138,21 +119,17 @@ namespace UnitTests.EventProducerTests
                 { SensorType.Light, new[] { "light-001", "light-002" } },
             };
 
-            // Act - Generate multiple data points (enough to likely cover all sensor types)
             var results = Enumerable
                 .Range(0, 100)
-                .Select(_ => worker.GenerateSensorData())
+                .Select(_ => _worker.GenerateSensorData())
                 .ToList();
 
-            // Assert
-            // Check that all generated data has valid sensor IDs for its type
             foreach (var result in results)
             {
                 var validIdsForType = expectedSensorIds[result.SensorType];
                 Assert.Contains(result.SensorId, validIdsForType);
             }
 
-            // Check that we got at least one sensor of each type
             foreach (var sensorType in Enum.GetValues(typeof(SensorType)).Cast<SensorType>())
             {
                 Assert.Contains(results, r => r.SensorType == sensorType);
@@ -172,9 +149,8 @@ namespace UnitTests.EventProducerTests
             string propertyToCheck
         )
         {
-            // Act
             var results = new List<SensorData>();
-            for (int i = 0; i < 100; i++) // Generate multiple samples
+            for (int i = 0; i < 100; i++)
             {
                 var data = _worker.GenerateSensorData();
                 if (data.SensorType == sensorType)
@@ -183,7 +159,6 @@ namespace UnitTests.EventProducerTests
                 }
             }
 
-            // Assert
             Assert.NotEmpty(results);
             foreach (var data in results)
             {
@@ -198,7 +173,6 @@ namespace UnitTests.EventProducerTests
         [Fact]
         public void GenerateSensorData_ShouldUseCorrectSensorIds()
         {
-            // Arrange
             var expectedSensorIdPatterns = new Dictionary<SensorType, string>
             {
                 { SensorType.Environmental, "^env-\\d{3}$" },
@@ -209,14 +183,12 @@ namespace UnitTests.EventProducerTests
                 { SensorType.Light, "^light-\\d{3}$" },
             };
 
-            // Act
             var results = new List<SensorData>();
-            for (int i = 0; i < 100; i++) // Generate enough samples to likely get all types
+            for (int i = 0; i < 100; i++)
             {
                 results.Add(_worker.GenerateSensorData());
             }
 
-            // Assert
             foreach (var data in results)
             {
                 Assert.Matches(expectedSensorIdPatterns[data.SensorType], data.SensorId);
@@ -226,20 +198,17 @@ namespace UnitTests.EventProducerTests
         [Fact]
         public async Task ExecuteAsync_ShouldHandlePublishingErrors()
         {
-            // Arrange
             _busMock
                 .Setup(x => x.Publish(It.IsAny<object>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new Exception("Simulated publish failure"));
 
             var cts = new CancellationTokenSource();
 
-            // Act
             var workerTask = _worker.StartAsync(cts.Token);
-            await Task.Delay(2000); // Let it run briefly
+            await Task.Delay(2000);
             cts.Cancel();
             await workerTask;
 
-            // Assert
             _loggerMock.Verify(
                 x =>
                     x.Log(
@@ -256,7 +225,6 @@ namespace UnitTests.EventProducerTests
         [Fact]
         public async Task ExecuteAsync_ShouldHandleDatabaseErrors()
         {
-            // Arrange
             var mockScope = new Mock<IServiceScope>();
             var mockProvider = new Mock<IServiceProvider>();
             mockProvider
@@ -267,13 +235,11 @@ namespace UnitTests.EventProducerTests
 
             var cts = new CancellationTokenSource();
 
-            // Act
             var workerTask = _worker.StartAsync(cts.Token);
-            await Task.Delay(2000); // Let it run briefly
+            await Task.Delay(2000);
             cts.Cancel();
             await workerTask;
 
-            // Assert
             _loggerMock.Verify(
                 x =>
                     x.Log(
@@ -290,7 +256,6 @@ namespace UnitTests.EventProducerTests
         [Fact]
         public async Task SaveSensorDataAsync_ShouldPersistDataCorrectly()
         {
-            // Arrange
             var sensorData = new SensorData
             {
                 SensorId = "test-001",
@@ -301,10 +266,8 @@ namespace UnitTests.EventProducerTests
                 Timestamp = DateTime.UtcNow,
             };
 
-            // Act
             await _worker.SaveSensorDataAsync(sensorData);
 
-            // Assert
             var savedData = await _dbContext.SensorData.FirstOrDefaultAsync();
             Assert.NotNull(savedData);
             Assert.Equal(sensorData.SensorId, savedData.SensorId);

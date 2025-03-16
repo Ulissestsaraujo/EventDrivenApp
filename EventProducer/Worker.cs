@@ -16,7 +16,6 @@ public class Worker : BackgroundService
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly Random _random = new();
 
-    // Define sensor IDs for each type
     private readonly Dictionary<SensorType, string[]> _sensorIds = new()
     {
         { SensorType.Environmental, new[] { "env-001", "env-002", "env-003" } },
@@ -38,7 +37,6 @@ public class Worker : BackgroundService
     {
         try
         {
-            // Ensure database is created
             using (var scope = _scopeFactory.CreateScope())
             {
                 try
@@ -49,7 +47,6 @@ public class Worker : BackgroundService
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error initializing database");
-                    // Don't rethrow here to allow the worker to continue with retries
                 }
             }
 
@@ -59,10 +56,8 @@ public class Worker : BackgroundService
                 {
                     var sensorData = GenerateSensorData();
 
-                    // Save to database
                     await SaveSensorDataAsync(sensorData);
 
-                    // Send message to queue
                     await _bus.Publish(MapToMessage(sensorData), stoppingToken);
 
                     _logger.LogInformation(
@@ -90,15 +85,12 @@ public class Worker : BackgroundService
 
     internal SensorData GenerateSensorData()
     {
-        // Randomly select a sensor type
         var sensorTypes = Enum.GetValues<SensorType>();
         var sensorType = sensorTypes[_random.Next(0, sensorTypes.Length)];
 
-        // Get a random sensor ID for the selected type
         var sensorIds = _sensorIds[sensorType];
         var sensorId = sensorIds[_random.Next(0, sensorIds.Length)];
 
-        // Create base sensor data
         var sensorData = new SensorData
         {
             SensorId = sensorId,
@@ -107,7 +99,6 @@ public class Worker : BackgroundService
             Processed = false,
         };
 
-        // Generate data based on sensor type
         switch (sensorType)
         {
             case SensorType.Environmental:

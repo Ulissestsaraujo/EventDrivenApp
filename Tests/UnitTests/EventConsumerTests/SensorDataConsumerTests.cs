@@ -31,22 +31,18 @@ namespace UnitTests.EventConsumerTests
             _serviceScopeMock = new Mock<IServiceScope>();
             _serviceProviderMock = new Mock<IServiceProvider>();
 
-            // Set up in-memory database for testing
             var options = new DbContextOptionsBuilder<AppDbContext>()
                 .UseInMemoryDatabase(databaseName: $"TestDb_{Guid.NewGuid()}")
                 .Options;
 
             _dbContext = new AppDbContext(options);
 
-            // Configure service provider to return the DbContext
             _serviceProviderMock
                 .Setup(sp => sp.GetService(typeof(AppDbContext)))
                 .Returns(_dbContext);
 
-            // Configure service scope to return the service provider
             _serviceScopeMock.Setup(s => s.ServiceProvider).Returns(_serviceProviderMock.Object);
 
-            // Configure scope factory to return the service scope
             _scopeFactoryMock.Setup(sf => sf.CreateScope()).Returns(_serviceScopeMock.Object);
 
             _consumer = new SensorDataConsumer(_loggerMock.Object, _scopeFactoryMock.Object);
@@ -56,7 +52,6 @@ namespace UnitTests.EventConsumerTests
         [Fact]
         public async Task Consume_EnvironmentalSensorData_ShouldProcessMessageAndSaveToDatabase()
         {
-            // Arrange
             var message = new SensorDataMessage
             {
                 SensorId = "env-001",
@@ -70,10 +65,8 @@ namespace UnitTests.EventConsumerTests
             var contextMock = new Mock<ConsumeContext<SensorDataMessage>>();
             contextMock.Setup(m => m.Message).Returns(message);
 
-            // Act
             await _consumer.Consume(contextMock.Object);
 
-            // Assert
             var savedData = await _dbContext.SensorData.ToListAsync();
             Assert.Single(savedData);
 
@@ -86,7 +79,6 @@ namespace UnitTests.EventConsumerTests
             Assert.Equal(message.Timestamp, savedItem.Timestamp);
             Assert.True(savedItem.Processed);
 
-            // Verify logger was called
             _loggerMock.Verify(
                 x =>
                     x.Log(
@@ -105,7 +97,6 @@ namespace UnitTests.EventConsumerTests
         [Fact]
         public async Task Consume_AirQualitySensorData_ShouldProcessMessageAndSaveToDatabase()
         {
-            // Arrange
             var message = new SensorDataMessage
             {
                 SensorId = "air-001",
@@ -120,10 +111,8 @@ namespace UnitTests.EventConsumerTests
             var contextMock = new Mock<ConsumeContext<SensorDataMessage>>();
             contextMock.Setup(m => m.Message).Returns(message);
 
-            // Act
             await _consumer.Consume(contextMock.Object);
 
-            // Assert
             var savedData = await _dbContext.SensorData.ToListAsync();
             Assert.Single(savedData);
 
@@ -141,21 +130,16 @@ namespace UnitTests.EventConsumerTests
         [Fact]
         public async Task Consume_WithInvalidMessage_ShouldThrowException()
         {
-            // Arrange
             // Create a null message to simulate an error condition
             SensorDataMessage message = null;
 
             var contextMock = new Mock<ConsumeContext<SensorDataMessage>>();
             contextMock.Setup(m => m.Message).Returns(message);
 
-            // Act & Assert
             await Assert.ThrowsAsync<NullReferenceException>(
                 () => _consumer.Consume(contextMock.Object)
             );
 
-            // Verify error was logged - we expect two error logs:
-            // 1. "Message cannot be null"
-            // 2. The exception log in the catch block
             _loggerMock.Verify(
                 x =>
                     x.Log(
@@ -168,7 +152,6 @@ namespace UnitTests.EventConsumerTests
                 Times.Exactly(2)
             );
 
-            // Verify nothing was saved
             var savedData = await _dbContext.SensorData.ToListAsync();
             Assert.Empty(savedData);
         }
@@ -176,7 +159,6 @@ namespace UnitTests.EventConsumerTests
         [Fact]
         public async Task Consume_ValidEnvironmentalData_ShouldSaveToDatabase()
         {
-            // Arrange
             var message = new SensorDataMessage
             {
                 SensorId = "environmental-001",
@@ -188,10 +170,8 @@ namespace UnitTests.EventConsumerTests
             };
             _consumeContextMock.Setup(x => x.Message).Returns(message);
 
-            // Act
             await _consumer.Consume(_consumeContextMock.Object);
 
-            // Assert
             var savedData = await _dbContext.SensorData.FirstOrDefaultAsync();
             Assert.NotNull(savedData);
             Assert.Equal(message.SensorId, savedData.SensorId);
@@ -203,7 +183,6 @@ namespace UnitTests.EventConsumerTests
         [Fact]
         public async Task Consume_ValidAirQualityData_ShouldSaveToDatabase()
         {
-            // Arrange
             var message = new SensorDataMessage
             {
                 SensorId = "airquality-001",
@@ -215,10 +194,8 @@ namespace UnitTests.EventConsumerTests
             };
             _consumeContextMock.Setup(x => x.Message).Returns(message);
 
-            // Act
             await _consumer.Consume(_consumeContextMock.Object);
 
-            // Assert
             var savedData = await _dbContext.SensorData.FirstOrDefaultAsync();
             Assert.NotNull(savedData);
             Assert.Equal(message.SensorId, savedData.SensorId);
@@ -230,7 +207,6 @@ namespace UnitTests.EventConsumerTests
         [Fact]
         public async Task Consume_InvalidData_ShouldLogErrorAndNotSave()
         {
-            // Arrange
             var message = new SensorDataMessage
             {
                 SensorId = "environmental-001",
@@ -241,10 +217,8 @@ namespace UnitTests.EventConsumerTests
             };
             _consumeContextMock.Setup(x => x.Message).Returns(message);
 
-            // Act
             await _consumer.Consume(_consumeContextMock.Object);
 
-            // Assert
             var savedData = await _dbContext.SensorData.FirstOrDefaultAsync();
             Assert.Null(savedData);
             _loggerMock.Verify(
@@ -263,7 +237,6 @@ namespace UnitTests.EventConsumerTests
         [Fact]
         public async Task Consume_DuplicateData_ShouldHandleGracefully()
         {
-            // Arrange
             var message = new SensorDataMessage
             {
                 SensorId = "environmental-001",
@@ -274,19 +247,16 @@ namespace UnitTests.EventConsumerTests
             };
             _consumeContextMock.Setup(x => x.Message).Returns(message);
 
-            // Act - Save the same data twice
             await _consumer.Consume(_consumeContextMock.Object);
             await _consumer.Consume(_consumeContextMock.Object);
 
-            // Assert
             var savedDataCount = await _dbContext.SensorData.CountAsync();
-            Assert.Equal(2, savedDataCount); // Should save both records as time-series data
+            Assert.Equal(2, savedDataCount);
         }
 
         [Fact]
         public async Task Consume_DatabaseError_ShouldHandleGracefully()
         {
-            // Arrange
             var message = new SensorDataMessage
             {
                 SensorId = "environmental-001",
@@ -297,10 +267,8 @@ namespace UnitTests.EventConsumerTests
             };
             _consumeContextMock.Setup(x => x.Message).Returns(message);
 
-            // Force database error by disposing context
             await _dbContext.DisposeAsync();
 
-            // Act & Assert
             await Assert.ThrowsAsync<ObjectDisposedException>(
                 async () => await _consumer.Consume(_consumeContextMock.Object)
             );
@@ -320,7 +288,6 @@ namespace UnitTests.EventConsumerTests
         [Fact]
         public async Task Consume_MissingRequiredFields_ShouldLogErrorAndNotSave()
         {
-            // Arrange
             var message = new SensorDataMessage
             {
                 // Missing SensorId and SensorType
@@ -329,10 +296,8 @@ namespace UnitTests.EventConsumerTests
             };
             _consumeContextMock.Setup(x => x.Message).Returns(message);
 
-            // Act
             await _consumer.Consume(_consumeContextMock.Object);
 
-            // Assert
             var savedData = await _dbContext.SensorData.FirstOrDefaultAsync();
             Assert.Null(savedData);
             _loggerMock.Verify(

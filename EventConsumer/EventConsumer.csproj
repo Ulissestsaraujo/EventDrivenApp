@@ -17,5 +17,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Shared\Shared.csproj" />
+    <InternalsVisibleTo Include="IntegrationTests" />
   </ItemGroup>
 </Project>
