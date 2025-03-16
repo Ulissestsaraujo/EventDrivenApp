@@ -36,39 +36,55 @@ public class Worker : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        // Ensure database is created
-        using (var scope = _scopeFactory.CreateScope())
+        try
         {
-            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            await dbContext.Database.EnsureCreatedAsync(stoppingToken);
+            // Ensure database is created
+            using (var scope = _scopeFactory.CreateScope())
+            {
+                try
+                {
+                    var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                    await dbContext.Database.EnsureCreatedAsync(stoppingToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error initializing database");
+                    // Don't rethrow here to allow the worker to continue with retries
+                }
+            }
+
+            while (!stoppingToken.IsCancellationRequested)
+            {
+                try
+                {
+                    var sensorData = GenerateSensorData();
+
+                    // Save to database
+                    await SaveSensorDataAsync(sensorData);
+
+                    // Send message to queue
+                    await _bus.Publish(MapToMessage(sensorData), stoppingToken);
+
+                    _logger.LogInformation(
+                        "Published {SensorType} data for sensor {SensorId} at {Time}",
+                        sensorData.SensorType,
+                        sensorData.SensorId,
+                        DateTimeOffset.Now
+                    );
+
+                    await Task.Delay(TimeSpan.FromMilliseconds(500), stoppingToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error processing sensor data");
+                    await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
+                }
+            }
         }
-
-        while (!stoppingToken.IsCancellationRequested)
+        catch (Exception ex)
         {
-            try
-            {
-                var sensorData = GenerateSensorData();
-
-                // Save to database
-                await SaveSensorDataAsync(sensorData);
-
-                // Send message to queue
-                await _bus.Publish(MapToMessage(sensorData), stoppingToken);
-
-                _logger.LogInformation(
-                    "Published {SensorType} data for sensor {SensorId} at {Time}",
-                    sensorData.SensorType,
-                    sensorData.SensorId,
-                    DateTimeOffset.Now
-                );
-
-                await Task.Delay(TimeSpan.FromMilliseconds(500), stoppingToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error processing sensor data");
-                await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
-            }
+            _logger.LogError(ex, "Error during worker initialization");
+            throw;
         }
     }
 

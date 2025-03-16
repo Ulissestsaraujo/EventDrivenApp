@@ -24,14 +24,38 @@ public class SensorDataConsumer : IConsumer<SensorDataMessage>
     {
         var message = context.Message;
 
-        _logger.LogInformation(
-            "Received {SensorType} data from sensor {SensorId}",
-            message.SensorType,
-            message.SensorId
-        );
-
         try
         {
+            // Validate the message
+            if (message == null)
+            {
+                _logger.LogError("Message cannot be null");
+                throw new NullReferenceException("Message cannot be null");
+            }
+
+            // Basic validation of required fields
+            if (string.IsNullOrEmpty(message.SensorId))
+            {
+                _logger.LogError("Missing required field: SensorId");
+                return; // Don't save to database if required fields are missing
+            }
+
+            _logger.LogInformation(
+                "Received {SensorType} data from sensor {SensorId}",
+                message.SensorType,
+                message.SensorId
+            );
+
+            // Validate sensor data values based on type
+            if (!IsValidSensorData(message))
+            {
+                _logger.LogError(
+                    "Invalid sensor data values for sensor {SensorId}",
+                    message.SensorId
+                );
+                return; // Don't save to database if data is invalid
+            }
+
             using var scope = _scopeFactory.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
@@ -94,5 +118,52 @@ public class SensorDataConsumer : IConsumer<SensorDataMessage>
             _logger.LogError(ex, "Error processing sensor data message");
             throw;
         }
+    }
+
+    private bool IsValidSensorData(SensorDataMessage message)
+    {
+        switch (message.SensorType)
+        {
+            case SensorType.Environmental:
+                // Check if temperature is within reasonable range (-100 to 100 Celsius)
+                if (
+                    message.Temperature.HasValue
+                    && (message.Temperature < -100 || message.Temperature > 100)
+                )
+                    return false;
+                // Check if humidity is within valid range (0-100%)
+                if (message.Humidity.HasValue && (message.Humidity < 0 || message.Humidity > 100))
+                    return false;
+                break;
+
+            case SensorType.AirQuality:
+                // CO2 levels should be positive
+                if (message.CO2.HasValue && message.CO2 < 0)
+                    return false;
+                // PM2.5 and PM10 should be positive
+                if (message.PM25.HasValue && message.PM25 < 0)
+                    return false;
+                if (message.PM10.HasValue && message.PM10 < 0)
+                    return false;
+                break;
+
+            case SensorType.Water:
+                // pH should be between 0 and 14
+                if (message.PH.HasValue && (message.PH < 0 || message.PH > 14))
+                    return false;
+                break;
+
+            case SensorType.Energy:
+                // Voltage and power consumption should be positive
+                if (message.Voltage.HasValue && message.Voltage < 0)
+                    return false;
+                if (message.PowerConsumption.HasValue && message.PowerConsumption < 0)
+                    return false;
+                break;
+
+            // Additional validations for other sensor types could be added here
+        }
+
+        return true;
     }
 }
