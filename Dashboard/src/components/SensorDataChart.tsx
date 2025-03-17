@@ -35,7 +35,7 @@ const SensorDataChart: React.FC<SensorDataChartProps> = ({
         <XAxis
           dataKey="timestamp"
           tickFormatter={(timestamp) =>
-            new Date(timestamp).toLocaleTimeString()
+            new Date(timestamp).toLocaleTimeString("de-DE")
           }
         />
         <YAxis />

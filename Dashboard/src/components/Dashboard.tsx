@@ -101,7 +101,7 @@ const Dashboard = () => {
   }, [selectedType]);
 
   const formatTimestamp = (timestamp: string) => {
-    return new Date(timestamp).toLocaleString();
+    return new Date(timestamp).toLocaleString("de-DE");
   };
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
